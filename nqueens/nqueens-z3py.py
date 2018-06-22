@@ -10,7 +10,7 @@ import time
 #######################################
 ## REPLACE THIS WITH Z3 LIB/so LOCATION
 #######################################
-init('/Users/tim/git/z3/build/')
+# init('/Users/adrianturcu/Desktop/bisphere-solver/nqueens/')
 
 # N-queens using boolean variables
 
