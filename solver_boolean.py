@@ -1,14 +1,28 @@
 from z3 import *
 
-num_bispheres = 4
+num_bispheres = input("Number of bispheres: ")
 
-x = 3
+y = input("Number of rows: ")
 
-y = 3
+x = input("Number of columns ")
 
 edges_possible = 2*x*y-x-y
 
 area = x*y
+
+dimensions = open("board_dimensions.txt", "w")
+
+dimensions.write(str(y) + ", " + str(x))
+
+dimensions.close()
+
+backbone_file = open("backbone.txt", "w")
+
+sidechain_file = open("sidechain.txt", "w")
+
+edges_file = open("edges.txt", "w")
+
+contacts_file = open("contacts.txt", "w")
 
 backbone= [[Bool("b_%s_%s" % (i+1, j+1)) for j in range(x)] for i in range(y)]
 
@@ -29,6 +43,50 @@ constraints_num_edges = []
 constraints_edge_sphere = []
 
 constraints_contacts = []
+
+edges_to_coords = {}
+
+coords_to_edges = {}
+
+coords_string_to_coords = {}
+
+# filling dictionaries
+
+edge_count = 0
+
+for i in range(y):
+	for j in range(x-1):
+		coordinate1 = []
+		coordinate2 = []
+		coordinate1.append(i)
+		coordinate1.append(j)
+		coordinate2.append(i)
+		coordinate2.append(j+1)
+		coordinate_pair = []
+		coordinate_pair.append(coordinate1)
+		coordinate_pair.append(coordinate2)
+		edges_to_coords[edge_count] = coordinate_pair
+		edge_count += 1
+	if i < y-1:
+		for j in range(x):
+			coordinate1 = []
+			coordinate2 = []
+			coordinate1.append(i)
+			coordinate1.append(j)
+			coordinate2.append(i+1)
+			coordinate2.append(j)
+			coordinate_pair = []
+			coordinate_pair.append(coordinate1)
+			coordinate_pair.append(coordinate2)
+			edges_to_coords[edge_count] = coordinate_pair
+			edge_count += 1
+
+for edge, coordinate_pair in edges_to_coords.items():
+	for coordinate in coordinate_pair:
+		if not str(coordinate) in coords_to_edges.keys():
+			coords_to_edges[str(coordinate)] = []
+			coords_string_to_coords[str(coordinate)] = coordinate
+		coords_to_edges[str(coordinate)].append(edge)
 
 # each spot can only have one of the following: backbone, sidechain, empty
 
@@ -68,106 +126,181 @@ for i in range(edges_possible):
 
 constraints_num_edges.append((Sum(edge_values) == num_bispheres))
 
-# contraints for edges and spheres
+# contraints for edges and spheres, as well as defining contacts
 
-# need to add constraint that says "cannot have a standalone sidechain or backbone"
+for coordinate_string, coordinate in coords_string_to_coords.items():
 
-edge_count = edges_possible-x+1
+	edge_list = coords_to_edges[coordinate_string]
+	y1 = coordinate[0]
+	x1 = coordinate[1]
 
-for j in range(x-1):
-	constraints_edge_sphere.append(Not(And(backbone[y-1][j], backbone[y-1][j+1], edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(sidechain[y-1][j], sidechain[y-1][j+1], edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(Not(backbone[y-1][j]), Not(sidechain[y-1][j+1]), edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(Not(sidechain[y-1][j]), Not(backbone[y-1][j+1]), edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(backbone[y-1][j], Not(sidechain[y-1][j+1]), edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(Not(backbone[y-1][j]), sidechain[y-1][j+1], edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(Not(sidechain[y-1][j]), backbone[y-1][j+1], edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(sidechain[y-1][j], Not(backbone[y-1][j+1]), edges[edge_count])))
-	edge_count += 1
+	for edge in edge_list:
+		edge_coords = edges_to_coords[edge]
+		list_coords = list(edge_coords)
+		list_coords.remove(coordinate)
+		other_coordinate = list_coords[0]
+		y2 = other_coordinate[0]
+		x2 = other_coordinate[1]
 
-edge_count = 2*x-2
+		# if connected spheres, must be one backbone and one sidechain (doesn't need this constraint, not sure why?)
 
-for i in range(y-1):
-	constraints_edge_sphere.append(Not(And(backbone[i][x-1], backbone[i+1][x-1], edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(sidechain[i][x-1], sidechain[i+1][x-1], edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(Not(backbone[i][x-1]), Not(sidechain[i+1][x-1]), edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(Not(sidechain[i][x-1]), Not(backbone[i+1][x-1]), edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(backbone[i][x-1], Not(sidechain[i+1][x-1]), edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(Not(backbone[i][x-1]), sidechain[i+1][x-1], edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(Not(sidechain[i][x-1]), backbone[i+1][x-1], edges[edge_count])))
-	constraints_edge_sphere.append(Not(And(sidechain[i][x-1], Not(backbone[i+1][x-1]), edges[edge_count])))
-	edge_count += 2*x-1
+		# constraints_edge_sphere.append(Not(And(backbone[y1][x1], backbone[y2][x2], edges[edge])))
+		# constraints_edge_sphere.append(Not(And(sidechain[y1][x1], sidechain[y2][x2], edges[edge])))
+		# constraints_edge_sphere.append(Not(And(Not(backbone[y1][x1]), Not(sidechain[y2][x2]), edges[edge])))
+		# constraints_edge_sphere.append(Not(And(Not(sidechain[y1][x1]), Not(backbone[y2][x2]), edges[edge])))
+		# constraints_edge_sphere.append(Not(And(backbone[y1][x1], Not(sidechain[y2][x2]), edges[edge])))
+		# constraints_edge_sphere.append(Not(And(Not(backbone[y1][x1]), sidechain[y2][x2], edges[edge])))
+		# constraints_edge_sphere.append(Not(And(Not(sidechain[y1][x1]), backbone[y2][x2], edges[edge])))
+		# constraints_edge_sphere.append(Not(And(sidechain[y1][x1], Not(backbone[y2][x2]), edges[edge])))
+
+	# cannot have a standalone backbone or sidechain, and no more than one edge per sphere
+
+	if len(edge_list) == 2:
+		edge1 = edge_list[0]
+		edge2 = edge_list[1]
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], Not(edges[edge1]), Not(edges[edge2]))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], Not(edges[edge1]), Not(edges[edge2]))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], edges[edge1], edges[edge2])))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], edges[edge1], edges[edge2])))
+
+	elif len(edge_list) == 3:
+		edge1 = edge_list[0]
+		edge2 = edge_list[1]
+		edge3 = edge_list[2]
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], Not(edges[edge1]), And(Not(edges[edge2]), Not(edges[edge3])))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], Not(edges[edge1]), And(Not(edges[edge2]), Not(edges[edge3])))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], edges[edge1], And(edges[edge2]), Not(edges[edge3]))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], edges[edge1], And(Not(edges[edge2]), edges[edge3]))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], Not(edges[edge1]), And(edges[edge2], edges[edge3]))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], edges[edge1], And(edges[edge2], edges[edge3]))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], edges[edge1], And(edges[edge2]), Not(edges[edge3]))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], edges[edge1], And(Not(edges[edge2]), edges[edge3]))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], Not(edges[edge1]), And(edges[edge2], edges[edge3]))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], edges[edge1], And(edges[edge2], edges[edge3]))))
+	
+	else:
+		edge1 = edge_list[0]
+		edge2 = edge_list[1]
+		edge3 = edge_list[2]
+		edge4 = edge_list[3]
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], Not(edges[edge1]), And(Not(edges[edge2]), Not(edges[edge3]), Not(edges[edge4])))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], Not(edges[edge1]), And(Not(edges[edge2]), Not(edges[edge3]), Not(edges[edge4])))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], Not(edges[edge1]), And(edges[edge2], edges[edge3], edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], edges[edge1], And(Not(edges[edge2]), edges[edge3], edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], edges[edge1], And(edges[edge2], Not(edges[edge3]), edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], edges[edge1], And(edges[edge2], edges[edge3], Not(edges[edge4])))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], Not(edges[edge1]), And(Not(edges[edge2]), edges[edge3], edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], Not(edges[edge1]), And(edges[edge2], Not(edges[edge3]), edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], Not(edges[edge1]), And(edges[edge2], edges[edge3], Not(edges[edge4])))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], edges[edge1], And(Not(edges[edge2]), Not(edges[edge3]), edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], edges[edge1], And(Not(edges[edge2]), edges[edge3], Not(edges[edge4])))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], edges[edge1]), And(edges[edge2], Not(edges[edge3], Not(edges[edge4])))))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], edges[edge1]), And(edges[edge2], edges[edge3], edges[edge4])))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], Not(edges[edge1]), And(edges[edge2], edges[edge3], edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], edges[edge1], And(Not(edges[edge2]), edges[edge3], edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], edges[edge1], And(edges[edge2], Not(edges[edge3]), edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], edges[edge1], And(edges[edge2], edges[edge3], Not(edges[edge4])))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], Not(edges[edge1]), And(Not(edges[edge2]), edges[edge3], edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], Not(edges[edge1]), And(edges[edge2], Not(edges[edge3]), edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], Not(edges[edge1]), And(edges[edge2], edges[edge3], Not(edges[edge4])))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], edges[edge1], And(Not(edges[edge2]), Not(edges[edge3]), edges[edge4]))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], edges[edge1], And(Not(edges[edge2]), edges[edge3], Not(edges[edge4])))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], edges[edge1]), And(edges[edge2], Not(edges[edge3], Not(edges[edge4])))))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], edges[edge1]), And(edges[edge2], edges[edge3], edges[edge4])))
+
+# two sidechains next to each other is a contact
 
 edge_count = 0
 
-# create constraints for the rest of board by looping through even and odd rows independently
+for i in range(y):
+	for j in range(x-1):
+		constraints_contacts.append(Not(And(sidechain[i][j], sidechain[i][j+1], Not(contacts[edge_count]))))
+		constraints_contacts.append(Not(And(Not(sidechain[i][j]), sidechain[i][j+1], contacts[edge_count])))
+		constraints_contacts.append(Not(And(sidechain[i][j], Not(sidechain[i][j+1]), contacts[edge_count])))
+		constraints_contacts.append(Not(And(Not(sidechain[i][j]), Not(sidechain[i][j+1]), contacts[edge_count])))
+		edge_count += 1
+	if i < y-1:
+		for j in range(x):
+			constraints_contacts.append(Not(And(sidechain[i][j], sidechain[i+1][j], Not(contacts[edge_count]))))
+			constraints_contacts.append(Not(And(Not(sidechain[i][j]), sidechain[i+1][j], contacts[edge_count])))
+			constraints_contacts.append(Not(And(sidechain[i][j], Not(sidechain[i+1][j]), contacts[edge_count])))
+			constraints_contacts.append(Not(And(Not(sidechain[i][j]), Not(sidechain[i+1][j]), contacts[edge_count])))
+			edge_count += 1
 
+# constraints for counting contacts
 
-# for i in range(y):
-# 	for j in range(x):
-# 		if i == 2 and j == 2:
-# 			constraints_edge_sphere.append(Xor(And(Not(backbone[i][j]), Not(sidechain[i][j]), Not(edges[i][j])), 
-# 										Xor(And(backbone[i][j], sidechain[i-1][j], edges[i][j], edges[i-1][j]), 
-# 										And(backbone[i][j], sidechain[i][j-1], edges[i][j], edges[i][j-1])), 
-# 										Xor(And(sidechain[i][j], backbone[i-1][j], edges[i][j], edges[i-1][j]), 
-# 										And(sidechain[i][j], backbone[i][j-1], edges[i][j], edges[i][j-1]))))
-# 		elif i == 2:
-# 			constraints_edge_sphere.append(Xor(Xor(And(backbone[i][j], sidechain[i][j+1], edges[i][j], edges[i][j+1]),  
-# 										And(sidechain[i][j], backbone[i][j+1], edges[i][j], edges[i][j+1])),
-# 										And(Not(backbone[i][j]), Not(sidechain[i][j]), Not(edges[i][j]))))
-# 		elif j == 2:
-# 			constraints_edge_sphere.append(Xor(Xor(And(backbone[i][j], sidechain[i+1][j], edges[i][j], edges[i+1][j]),  
-# 										And(sidechain[i][j], backbone[i+1][j], edges[i][j], edges[i+1][j])),
-# 										And(Not(backbone[i][j]), Not(sidechain[i][j]), Not(edges[i][j]))))
-# 		else:
-# 			constraints_edge_sphere.append(Xor(Xor(And(backbone[i][j], sidechain[i][j+1], edges[i][j], edges[i][j+1]), 
-# 										And(backbone[i][j], sidechain[i+1][j], edges[i][j], edges[i+1][j]), 
-# 										Xor(And(sidechain[i][j], backbone[i][j+1], edges[i][j], edges[i][j+1]), 
-# 										And(sidechain[i][j], backbone[i+1][j], edges[i][j], edges[i+1][j]))), 
-# 										And(Not(backbone[i][j]), Not(sidechain[i][j]), Not(edges[i][j]))))
+contact_values = [Int("ee_%s" % (i+1)) for i in range(edges_possible)]
 
-# constraints for contacts
+for i in range(edges_possible):
+	contact_values[i] = If(contacts[i], 1, 0)
 
-# NEED TO ADD THIS
+# make solver, add constraints, and maximize contacts
 
-# make solver and add constraints
 s = Solver()
 
-s.add(constraints_spheres)
-s.add(constraints_edges)
-s.add(constraints_num_spheres)
-s.add(constraints_num_edges)
-s.add(constraints_edge_sphere) # this does not work, have to fix constraints
+s.check()
 
-print (s.check())
-
-# output model
 m = s.model()
+
+for i in range(edges_possible):
+
+	s.add(constraints_spheres)
+	s.add(constraints_edges)
+	s.add(constraints_num_spheres)
+	s.add(constraints_num_edges)
+	s.add(constraints_edge_sphere)
+	s.add(constraints_contacts)
+	s.add((Sum(contact_values) == i))
+
+	if (str(s.check()) == "unsat"):
+		print("Maximum number of contacts: " + str(i-1))
+		break
+
+	else:
+		m = s.model()
+		s = Solver()
 
 # print matrix values that satisfy model
 
-back = [ [ m.evaluate(backbone[i][j]) for j in range(3) ] for i in range(3) ]
+back = [ [ m.evaluate(backbone[i][j]) for j in range(x) ] for i in range(y) ]
 print("BACKBONE")
 print_matrix(back)
 
-side = [ [ m.evaluate(sidechain[i][j]) for j in range(3) ] for i in range(3) ]
+side = [ [ m.evaluate(sidechain[i][j]) for j in range(x) ] for i in range(y) ]
 print("SIDECHAIN")
 print_matrix(side)
 
-edge = [ m.evaluate(edges[i]) for i in range(9) ]
+edge = [ m.evaluate(edges[i]) for i in range(edges_possible) ]
 print("EDGES")
 print_matrix(edge)
 
-cont = [ m.evaluate(contacts[i]) for i in range(9) ]
+cont = [ m.evaluate(contacts[i]) for i in range(edges_possible) ]
 print("CONTACTS")
 print_matrix(cont)
 
-for i in range(3):
+for i in range(y):
 	print
-	for j in range(3):
+	for j in range(x):
 		if back[i][j] == True:
 			print(" b "),
 		elif side[i][j] == True:
 			print(" s "),
 		else:
 			print(" e "),
+
+# write solution matrices to output files
+
+for i in range(y-1):
+	backbone_file.write(str(back[i]).strip('[').strip(']') + ", \n")
+	sidechain_file.write(str(side[i]).strip('[').strip(']') + ", \n")
+
+backbone_file.write(str(back[y-1]).strip('[').strip(']'))
+sidechain_file.write(str(side[y-1]).strip('[').strip(']'))
+
+edges_file.write(str(edge).strip('[').strip(']'))
+contacts_file.write(str(cont).strip('[').strip(']'))
+
+backbone_file.close()
+sidechain_file.close()
+edges_file.close()
+contacts_file.close()
