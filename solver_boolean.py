@@ -144,14 +144,12 @@ for coordinate_string, coordinate in coords_string_to_coords.items():
 
 		# if connected spheres, must be one backbone and one sidechain (doesn't need this constraint, not sure why?)
 
-		# constraints_edge_sphere.append(Not(And(backbone[y1][x1], backbone[y2][x2], edges[edge])))
-		# constraints_edge_sphere.append(Not(And(sidechain[y1][x1], sidechain[y2][x2], edges[edge])))
-		# constraints_edge_sphere.append(Not(And(Not(backbone[y1][x1]), Not(sidechain[y2][x2]), edges[edge])))
-		# constraints_edge_sphere.append(Not(And(Not(sidechain[y1][x1]), Not(backbone[y2][x2]), edges[edge])))
-		# constraints_edge_sphere.append(Not(And(backbone[y1][x1], Not(sidechain[y2][x2]), edges[edge])))
-		# constraints_edge_sphere.append(Not(And(Not(backbone[y1][x1]), sidechain[y2][x2], edges[edge])))
-		# constraints_edge_sphere.append(Not(And(Not(sidechain[y1][x1]), backbone[y2][x2], edges[edge])))
-		# constraints_edge_sphere.append(Not(And(sidechain[y1][x1], Not(backbone[y2][x2]), edges[edge])))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], backbone[y2][x2], edges[edge])))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], sidechain[y2][x2], edges[edge])))
+		constraints_edge_sphere.append(Not(And(backbone[y1][x1], Not(sidechain[y2][x2]), edges[edge])))
+		constraints_edge_sphere.append(Not(And(Not(backbone[y1][x1]), sidechain[y2][x2], edges[edge])))
+		constraints_edge_sphere.append(Not(And(Not(sidechain[y1][x1]), backbone[y2][x2], edges[edge])))
+		constraints_edge_sphere.append(Not(And(sidechain[y1][x1], Not(backbone[y2][x2]), edges[edge])))
 
 	# cannot have a standalone backbone or sidechain, and no more than one edge per sphere
 
