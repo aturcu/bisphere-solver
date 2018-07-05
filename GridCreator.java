@@ -11,6 +11,11 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
  
+/**
+* This is the GridCreator class that is responsible for taking in files created by the solver_boolean 
+* SAT solver and turning them into a 2D grid representation (with green circles for backbone spheres, red circles 
+* for sidechain spheres, thick green lines for edges, and thin red lines for contacts).
+*/
 public class GridCreator extends Application {
  
 	/**
@@ -29,8 +34,10 @@ public class GridCreator extends Application {
     @Override
     public void start(Stage initialBoard) throws IOException {     
     	
+      // dimensions of grid, y by x (num rows by num cols)
     	int[] dimensions = new int[2];
     	
+      // dimensions are read from file and stored in array
     	try(BufferedReader br = new BufferedReader(new FileReader(new File("board_dimensions.txt")))) {
     		String line = br.readLine();
     		
@@ -41,6 +48,7 @@ public class GridCreator extends Application {
 
     	}
         
+        // set up board, root, canvas, and graphics context, then draw the board, set the scene, and display it
         Stage board = new Stage();
         board.setTitle("Board");
         Group root = new Group();
@@ -53,8 +61,8 @@ public class GridCreator extends Application {
     }
 
     /**
-     * This method draws the board given the dimensions of the grid and 
-     * the coordinates and types of BisphereSegments written in the file.
+     * This method draws the board given the dimensions of the grid, as well as where on 
+     * the board we have a backbone, sidechain, edge, or contact.
      * 
      * @param gc
      * @param backbone board
@@ -70,6 +78,7 @@ public class GridCreator extends Application {
         gc.setStroke(Color.GREEN);
         gc.setLineWidth(5);
 
+        // reads edges file, puts edges in between appropriate backbone and sidechain spheres
         try(BufferedReader br = new BufferedReader(new FileReader(edges))) {
 
             int row1 = 0;
@@ -82,7 +91,7 @@ public class GridCreator extends Application {
               String[] lineArray = line.split(", ");
               for(int edge = 0; edge < lineArray.length; edge++) {
                 if (lineArray[edge].compareTo("True") == 0) {
-                  gc.strokeLine(20+50*row1+10, 20+50*col1+10, 20+50*row2+10, 20+50*col2+10);
+                  gc.strokeLine(20+50*col1+10, 20+50*row1+10, 20+50*col2+10, 20+50*row2+10);
                 }
                 col1++;
                 col2++;
@@ -106,6 +115,7 @@ public class GridCreator extends Application {
         gc.setStroke(Color.RED);
         gc.setLineWidth(1);
 
+        // reads contacts file, puts contacts in between adjacent sidechain spheres
         try(BufferedReader br = new BufferedReader(new FileReader(contacts))) {
 
             int row1 = 0;
@@ -118,7 +128,7 @@ public class GridCreator extends Application {
               String[] lineArray = line.split(", ");
               for(int edge = 0; edge < lineArray.length; edge++) {
                 if (lineArray[edge].compareTo("True") == 0) {
-                  gc.strokeLine(20+50*row1+10, 20+50*col1+10, 20+50*row2+10, 20+50*col2+10);
+                  gc.strokeLine(20+50*col1+10, 20+50*row1+10, 20+50*col2+10, 20+50*row2+10);
                 }
                 col1++;
                 col2++;
@@ -139,6 +149,7 @@ public class GridCreator extends Application {
             }
         }
 
+        // creates a grid of black points
         for(int i = 20; i < 50*dimensions[0]; i+=50) {
         		for (int j = 20; j < 50*dimensions[1]; j+=50) {
         			gc.fillOval(i, j, 20, 20);
@@ -146,6 +157,8 @@ public class GridCreator extends Application {
         }
         
         gc.setFill(Color.GREEN);
+
+        // reads backbone file, puts green spheres in appropriate locations
         try(BufferedReader br = new BufferedReader(new FileReader(backbone))) {
 
             int row = 0;
@@ -154,7 +167,7 @@ public class GridCreator extends Application {
         			String[] lineArray = line.split(", ");
               for(int col = 0; col < lineArray.length; col++) {
                 if (lineArray[col].compareTo("True") == 0) {
-                  gc.fillOval(20+50*row-5, 20+50*col-5, 30, 30);
+                  gc.fillOval(20+50*col-5, 20+50*row-5, 30, 30);
                 }
               }
               row++;
@@ -162,6 +175,8 @@ public class GridCreator extends Application {
         }
 
         gc.setFill(Color.RED);
+
+        // reads sidechain file, puts red spheres in appropriate locations
         try(BufferedReader br = new BufferedReader(new FileReader(sidechain))) {
 
             int row = 0;
@@ -170,36 +185,11 @@ public class GridCreator extends Application {
               String[] lineArray = line.split(", ");
               for(int col = 0; col < lineArray.length; col++) {
                 if (lineArray[col].compareTo("True") == 0) {
-                  gc.fillOval(20+50*row-5, 20+50*col-5, 30, 30);
+                  gc.fillOval(20+50*col-5, 20+50*row-5, 30, 30);
                 }
               }
               row++;
             }
         }
-
-  //       			for (int i = 0; i < 6; i++) {
-  //       				segmentInfo[i] = Integer.parseInt(lineArray[i]);
-  //       			}
-        		
-  //       			int[] sphere1Coords = {20+50*segmentInfo[1], 20+50*segmentInfo[0]};
-  //       			int[] sphere2Coords = {20+50*segmentInfo[4], 20+50*segmentInfo[3]};
-        		
-  //       			gc.strokeLine(sphere1Coords[0]+10, sphere1Coords[1]+10, sphere2Coords[0]+10, sphere2Coords[1]+10);
-        		
-  //       			if (segmentInfo[2] == 0) {
-  //       				gc.setFill(Color.GREEN);
-  //       				gc.fillOval(sphere1Coords[0]-5, sphere1Coords[1]-5, 30, 30);
-  //       			} else {
-  //       				gc.setFill(Color.RED);
-  //       				gc.fillOval(sphere1Coords[0]-5, sphere1Coords[1]-5, 30, 30);
-  //       			}
-        		
-  //       			if (segmentInfo[5] == 0) {
-  //       				gc.setFill(Color.GREEN);
-  //       				gc.fillOval(sphere2Coords[0]-5, sphere2Coords[1]-5, 30, 30);
-  //       			} else {
-  //       				gc.setFill(Color.RED);
-  //       				gc.fillOval(sphere2Coords[0]-5, sphere2Coords[1]-5, 30, 30);
-  //       			}
-        }
+    }
 }
