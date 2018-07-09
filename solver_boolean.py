@@ -224,17 +224,18 @@ for i in range(edges_possible):
 # make solver, add constraints, and maximize contacts (max number is the last number of contacts that could be made)
 
 s = Solver()
+s.add(constraints_spheres)
+s.add(constraints_edges)
+s.add(constraints_num_spheres)
+s.add(constraints_num_edges)
+s.add(constraints_edge_sphere)
+s.add(constraints_contacts)
 s.check()
 m = s.model()
 
 for i in range(edges_possible):
 
-	s.add(constraints_spheres)
-	s.add(constraints_edges)
-	s.add(constraints_num_spheres)
-	s.add(constraints_num_edges)
-	s.add(constraints_edge_sphere)
-	s.add(constraints_contacts)
+	s.push()
 	s.add((Sum(contact_values) == i))
 
 	if (str(s.check()) == "unsat"):
@@ -243,7 +244,7 @@ for i in range(edges_possible):
 
 	else:
 		m = s.model()
-		s = Solver()
+		s.pop()
 
 # print matrix values that satisfy model
 
