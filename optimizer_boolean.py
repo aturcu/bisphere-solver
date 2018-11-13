@@ -1,9 +1,15 @@
 from z3 import *
+import math
+import sys
 
 # prompts user for number of bispheres, rows, and columns
 num_bispheres = input("Number of bispheres: ") 
-y = input("Number of rows: ")
-x = input("Number of columns ")
+y = 4 if num_bispheres <= 4 else int(math.ceil(float(num_bispheres)/2) + 1)
+x = 4 if num_bispheres <= 4 else int(math.ceil(float(num_bispheres)/2) + 1)
+
+if num_bispheres == 1:
+	print("Number of bispheres must be greater than 1")
+	sys.exit()
 
 # calculates how many edges are possible on grid, and the area of the grid 
 edges_possible = 2*x*y-x-y
@@ -33,6 +39,10 @@ constraints_num_spheres = []
 constraints_num_edges = []
 constraints_edge_sphere = []
 constraints_contacts = []
+constraints_v_backbone = []
+constraints_v_sidechain = []
+constraints_h_backbone = []
+constraints_h_sidechain = []
 
 # dictionaries that map edge number to grid coordinate, coordinate to edge numbers, and a string version of a coordinate to a coordinate
 edges_to_coords = {}
@@ -221,6 +231,64 @@ contact_values = [Int("ee_%s" % (i+1)) for i in range(edges_possible)]
 for i in range(edges_possible):
 	contact_values[i] = If(contacts[i], 1, 0)
 
+# Breaking vertical symmetry
+
+v_sym = {}
+
+for i in range(y):
+	for j in range(x):
+		v_sym[i,j] = [y-i-1, j]
+
+v_prev_backbone = []
+v_prev_sidechain = []
+
+index = 0
+
+v_prev_backbone.append(backbone[0][0] == backbone[v_sym[0,0][0]][v_sym[i,j][1]])
+v_prev_sidechain.append(sidechain[0][0] == sidechain[v_sym[0,0][0]][v_sym[i,j][1]])
+
+constraints_v_backbone.append(Implies(backbone[0][0], backbone[v_sym[0,0][0]][v_sym[0,0][1]]))
+constraints_v_sidechain.append(Implies(sidechain[0][0], sidechain[v_sym[0,0][0]][v_sym[0,0][1]]))
+
+for i in range(y/2):
+	for j in range(x):
+		if i == 0 and j == 0: 
+			continue
+		constraints_v_backbone.append(Implies(v_prev_backbone[index], Implies(backbone[i][j], backbone[v_sym[i,j][0]][v_sym[i,j][1]])))
+		constraints_v_sidechain.append(Implies(v_prev_sidechain[index], Implies(sidechain[i][j], sidechain[v_sym[i,j][0]][v_sym[i,j][1]])))
+		v_prev_backbone.append(And(v_prev_backbone[index-1], backbone[i][j] == backbone[v_sym[i,j][0]][v_sym[i,j][1]]))
+		v_prev_sidechain.append(And(v_prev_sidechain[index-1], sidechain[i][j] == sidechain[v_sym[i,j][0]][v_sym[i,j][1]]))
+		index += 1
+
+# Breaking horizontal symmetry
+
+h_sym = {}
+
+for i in range(y):
+	for j in range(x):
+		h_sym[i,j] = [i, x-j-1]
+
+h_prev_backbone = []
+h_prev_sidechain = []
+
+index = 0
+
+h_prev_backbone.append(backbone[0][0] == backbone[h_sym[0,0][0]][h_sym[i,j][1]])
+h_prev_sidechain.append(sidechain[0][0] == sidechain[h_sym[0,0][0]][h_sym[i,j][1]])
+
+constraints_v_backbone.append(Implies(backbone[0][0], backbone[h_sym[0,0][0]][h_sym[0,0][1]]))
+constraints_v_sidechain.append(Implies(sidechain[0][0], sidechain[h_sym[0,0][0]][h_sym[0,0][1]]))
+
+for i in range(y):
+	for j in range(x/2):
+		if i == 0 and j == 0: 
+			continue
+		constraints_h_backbone.append(Implies(h_prev_backbone[index], Implies(backbone[i][j], backbone[h_sym[i,j][0]][h_sym[i,j][1]])))
+		constraints_h_sidechain.append(Implies(h_prev_sidechain[index], Implies(sidechain[i][j], sidechain[h_sym[i,j][0]][h_sym[i,j][1]])))
+		h_prev_backbone.append(And(h_prev_backbone[index-1], backbone[i][j] == backbone[h_sym[i,j][0]][h_sym[i,j][1]]))
+		h_prev_sidechain.append(And(h_prev_sidechain[index-1], sidechain[i][j] == sidechain[h_sym[i,j][0]][h_sym[i,j][1]]))
+		index += 1
+
 # make solver, add constraints, and maximize contacts (max number is the last number of contacts that could be made)
 
 s = Optimize()
@@ -230,6 +298,10 @@ s.add(constraints_num_spheres)
 s.add(constraints_num_edges)
 s.add(constraints_edge_sphere)
 s.add(constraints_contacts)
+s.add(constraints_v_backbone)
+s.add(constraints_v_sidechain)
+s.add(constraints_h_backbone)
+s.add(constraints_h_sidechain)
 
 optimize = s.maximize(Sum(contact_values))
 
