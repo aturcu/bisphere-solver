@@ -232,7 +232,7 @@ def optimize(num_bispheres, v, h, p):
 	for i in range(edges_possible):
 		contact_values[i] = If(contacts[i], 1, 0)
 
-	# Breaking vertical symmetry
+	# Breaking vertical symmetry using lex leader
 	if v:
 
 		# stores vertical symmetries
@@ -248,9 +248,11 @@ def optimize(num_bispheres, v, h, p):
 
 		index = 0
 
+		# adds first equality for lex leader
 		v_prev_backbone.append(backbone[0][0] == backbone[v_sym[0,0][0]][v_sym[0,0][1]])
 		v_prev_sidechain.append(sidechain[0][0] == sidechain[v_sym[0,0][0]][v_sym[0,0][1]])
 
+		# adds first implication to the constraints
 		constraints_v_backbone.append(Implies(backbone[0][0], backbone[v_sym[0,0][0]][v_sym[0,0][1]]))
 		constraints_v_sidechain.append(Implies(sidechain[0][0], sidechain[v_sym[0,0][0]][v_sym[0,0][1]]))
 
@@ -258,13 +260,17 @@ def optimize(num_bispheres, v, h, p):
 			for j in range(x):
 				if i == 0 and j == 0: 
 					continue 
+
+				# according to lex leader format, adds an implication to the constraints using stored equalities and symmetries
 				constraints_v_backbone.append(Implies(v_prev_backbone[index], Implies(backbone[i][j], backbone[v_sym[i,j][0]][v_sym[i,j][1]])))
 				constraints_v_sidechain.append(Implies(v_prev_sidechain[index], Implies(sidechain[i][j], sidechain[v_sym[i,j][0]][v_sym[i,j][1]])))
+
+				# extends the equality list for lex leader
 				v_prev_backbone.append(And(v_prev_backbone[index], backbone[i][j] == backbone[v_sym[i,j][0]][v_sym[i,j][1]]))
 				v_prev_sidechain.append(And(v_prev_sidechain[index], sidechain[i][j] == sidechain[v_sym[i,j][0]][v_sym[i,j][1]]))
 				index += 1
 
-	# Breaking horizontal symmetry
+	# Breaking horizontal symmetry using lex leader
 	if h:
 
 		# stores horizontal symmetries
@@ -274,15 +280,17 @@ def optimize(num_bispheres, v, h, p):
 			for j in range(x):
 				h_sym[i,j] = [i, x-j-1]
 
-		# Holds previous equalities for lex-leader
+		# Holds previous equalities for lex leader
 		h_prev_backbone = []
 		h_prev_sidechain = []
 
 		index = 0
 
+		# adds first equality for lex leader
 		h_prev_backbone.append(backbone[0][0] == backbone[h_sym[0,0][0]][h_sym[0,0][1]])
 		h_prev_sidechain.append(sidechain[0][0] == sidechain[h_sym[0,0][0]][h_sym[0,0][1]])
 
+		# adds first implication to the constraints
 		constraints_h_backbone.append(Implies(backbone[0][0], backbone[h_sym[0,0][0]][h_sym[0,0][1]]))
 		constraints_h_sidechain.append(Implies(sidechain[0][0], sidechain[h_sym[0,0][0]][h_sym[0,0][1]]))
 
@@ -290,8 +298,12 @@ def optimize(num_bispheres, v, h, p):
 			for j in range(x/2):
 				if i == 0 and j == 0: 
 					continue
+
+				# according to lex leader format, adds an implication to the constraints using stored equalities and symmetries
 				constraints_h_backbone.append(Implies(h_prev_backbone[index], Implies(backbone[i][j], backbone[h_sym[i,j][0]][h_sym[i,j][1]])))
 				constraints_h_sidechain.append(Implies(h_prev_sidechain[index], Implies(sidechain[i][j], sidechain[h_sym[i,j][0]][h_sym[i,j][1]])))
+
+				# extends the equality list for lex leader
 				h_prev_backbone.append(And(h_prev_backbone[index], backbone[i][j] == backbone[h_sym[i,j][0]][h_sym[i,j][1]]))
 				h_prev_sidechain.append(And(h_prev_sidechain[index], sidechain[i][j] == sidechain[h_sym[i,j][0]][h_sym[i,j][1]]))
 				index += 1
@@ -299,25 +311,24 @@ def optimize(num_bispheres, v, h, p):
 	# Breaking corner packing symmetry
 	if p:
 
-		# ensures that there is at least one bisphere in the first column and the first row
-
-		first_col = [Int("fr_%s" % (i+1)) for i in range(y)]
-		first_row = [Int("fc_%s" % (i+1)) for i in range(x)]
+		# ensures that there is at least one bisphere in some row and some column (depending on symmetry breaking chosen)
+		col = [Int("fr_%s" % (i+1)) for i in range(y)]
+		row = [Int("fc_%s" % (i+1)) for i in range(x)]
 
 		count = 0
 
 		for i in range(y):
-				first_col[count] = If(Or(backbone[i][0], sidechain[i][0]), 1, 0)
+				col[count] = If(Or(backbone[i][0], sidechain[i][0]), 1, 0)
 				count += 1
 
 		count = 0
 
 		for i in range(x):
-				first_row[count] = If(Or(backbone[0][i], sidechain[0][i]), 1, 0)
+				row[count] = If(Or(backbone[0][i], sidechain[0][i]), 1, 0)
 				count += 1
 
-		constraints_packing.append((Sum(first_col) > 0))
-		constraints_packing.append((Sum(first_row) > 0))
+		constraints_packing.append((Sum(col) > 0))
+		constraints_packing.append((Sum(row) > 0))
 
 
 	# make solver, add constraints, and maximize contacts (max number is the last number of contacts that could be made)
@@ -401,10 +412,10 @@ if __name__ == '__main__':
 	optimize(num_bispheres, False, False, True)
 	print("\nVertical and horizontal symmetry breaking...")
 	optimize(num_bispheres, True, True, False)
-	print("\nVertical and corner packing symmetry breaking...")
-	optimize(num_bispheres, True, False, True)
-	print("\nHorizontal and corner packing symmetry breaking...")
-	optimize(num_bispheres, False, True, True)
-	print("\nAll symmetry breaking...")
-	optimize(num_bispheres, True, True, True)
+
+	# Notes: cannot yet implement corner packing with vertical or horizontal symmetry breaking. 
+	# Corner packing seems to slow down the program considerably. The effect of vertical and 
+	# horizontal breaking varies (sometimes improves performance but sometimes slows it down, not
+	# sure why this is).
+
 
