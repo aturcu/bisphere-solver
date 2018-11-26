@@ -3,6 +3,9 @@ import math
 import sys
 import time
 
+# this method maximizes the number of contacts possible on a 2D grid, and returns the configuration
+# of bispheres that produces this optimum. The method takes in the number of bispheres on the grid, 
+# as well as 3 boolean values that correspond to whether or not a certain kind of symmetry breaking is used.
 def optimize(num_bispheres, v, h, p):
 	y = 4 if num_bispheres <= 4 else int(math.ceil(float(num_bispheres)/2) + 1)
 	x = 4 if num_bispheres <= 4 else int(math.ceil(float(num_bispheres)/2) + 1)
@@ -400,16 +403,27 @@ def optimize(num_bispheres, v, h, p):
 	contacts_file.close()
 
 if __name__ == '__main__':
+
 	# prompts user for number of bispheres
 	num_bispheres = input("Number of bispheres: ")
+
+	# runs program with no symmetry breaking
 	print("\nNo symmetry breaking...")
 	optimize(num_bispheres, False, False, False)
+
+	# runs program with only vertical symmetry breaking
 	print("\nOnly vertical symmetry breaking...")
 	optimize(num_bispheres, True, False, False)
+
+	# runs program with only horizontal symmetry breaking
 	print("\nOnly horizontal symmetry breaking...")
 	optimize(num_bispheres, False, True, False)
-	print("\nOnly corner packing symmetry breaking...")
+
+	# runs program with only corner packing
+	print("\nOnly corner packing...")
 	optimize(num_bispheres, False, False, True)
+
+	# runs program with vertical and horizontal symmetry breaking
 	print("\nVertical and horizontal symmetry breaking...")
 	optimize(num_bispheres, True, True, False)
 
