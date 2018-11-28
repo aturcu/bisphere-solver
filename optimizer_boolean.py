@@ -6,11 +6,13 @@ import time
 # this method maximizes the number of contacts possible on a 2D grid, and returns the configuration
 # of bispheres that produces this optimum. The method takes in the number of bispheres on the grid, 
 # as well as 3 boolean values that correspond to whether or not a certain kind of symmetry breaking is used.
-def optimize(num_bispheres, v, h, p):
+def optimize(num_bispheres, v, h, p, p2, fixone):
 	y = 4 if num_bispheres <= 4 else int(math.ceil(float(num_bispheres)/2) + 1)
 	x = 4 if num_bispheres <= 4 else int(math.ceil(float(num_bispheres)/2) + 1)
 
-	if num_bispheres == 1:
+	startBuilding = time.time()
+
+	if num_bispheres <= 1:
 		print("Number of bispheres must be greater than 1")
 		sys.exit()
 
@@ -333,9 +335,20 @@ def optimize(num_bispheres, v, h, p):
 		constraints_packing.append((Sum(col) > 0))
 		constraints_packing.append((Sum(row) > 0))
 
+	# Trying a different way of expressing corner packing, without sums
+	# Since number of bispheres > 1, we know that there is SOME sidechain, backbone.
+	constraints_packing_2 = []
+	if p2:
+		constraints_packing_2.append(Or([Or(backbone[0][i], sidechain[0][i]) for i in range(x)]))
+		constraints_packing_2.append(Or([Or(backbone[j][0], sidechain[j][0]) for j in range(y)]))
+
+	# Fix the position of one bisphere in the corner:
+	constraints_fix_one = []
+	if fixone: 
+		constraints_fix_one.append(backbone[0][0])
+		constraints_fix_one.append(sidechain[0][1])
 
 	# make solver, add constraints, and maximize contacts (max number is the last number of contacts that could be made)
-
 	s = Optimize()
 	s.add(constraints_spheres)
 	s.add(constraints_edges)
@@ -348,12 +361,17 @@ def optimize(num_bispheres, v, h, p):
 	s.add(constraints_h_backbone)
 	s.add(constraints_h_sidechain)
 	s.add(constraints_packing)
+	s.add(constraints_packing_2)
+	s.add(constraints_fix_one)
 
- 	start = time.time()
+	elapsedBuildAdd = time.time() - startBuilding
+	print("time building/adding: " + str(elapsedBuildAdd))
+
+	startSolving = time.time()
 	optimize = s.maximize(Sum(contact_values))
 	print(s.check())
-	elapsed = time.time() - start
-	print(elapsed)
+	elapsedSolving = time.time() - startSolving
+	print("time optimizing: " + str(elapsedSolving))
 
 	max_contacts = s.upper(optimize)
 
@@ -407,29 +425,35 @@ if __name__ == '__main__':
 	# prompts user for number of bispheres
 	num_bispheres = input("Number of bispheres: ")
 
+	print("\nFix the position of one bisphere (try 1, to confirm no ordering bias)")
+	optimize(num_bispheres, False, False, False, False, True)
+
 	# runs program with no symmetry breaking
 	print("\nNo symmetry breaking...")
-	optimize(num_bispheres, False, False, False)
+	optimize(num_bispheres, False, False, False, False, False)
 
 	# runs program with only vertical symmetry breaking
 	print("\nOnly vertical symmetry breaking...")
-	optimize(num_bispheres, True, False, False)
+	optimize(num_bispheres, True, False, False, False, False)
 
 	# runs program with only horizontal symmetry breaking
 	print("\nOnly horizontal symmetry breaking...")
-	optimize(num_bispheres, False, True, False)
+	optimize(num_bispheres, False, True, False, False, False)
 
 	# runs program with only corner packing
 	print("\nOnly corner packing...")
-	optimize(num_bispheres, False, False, True)
+	optimize(num_bispheres, False, False, True, False, False)
+	print("\nOnly corner packing (v2)...")
+	optimize(num_bispheres, False, False, False, True, False)
 
 	# runs program with vertical and horizontal symmetry breaking
 	print("\nVertical and horizontal symmetry breaking...")
-	optimize(num_bispheres, True, True, False)
+	optimize(num_bispheres, True, True, False, False, False)
 
 	# Notes: cannot yet implement corner packing with vertical or horizontal symmetry breaking. 
 	# Corner packing seems to slow down the program considerably. The effect of vertical and 
 	# horizontal breaking varies (sometimes improves performance but sometimes slows it down, not
 	# sure why this is).
 
-
+	print("\nFix the position of one bisphere (try 2)")
+	optimize(num_bispheres, False, False, False, False, True)
